@@ -1,0 +1,7 @@
+dir     /bin                                                                            0755 0 0
+file    /bin/busybox            busybox                                                 0755 0 0
+slink   /bin/sh                 /bin/busybox                                            0755 0 0
+file    /init                   qemu-init.sh                                            0755 0 0
+file    /rust_helloworld.ko    ../linux-fujita/build/samples/rust/rust_helloworld.ko    0755 0 0
+file    /rust_e1000.ko         ../rust-e1000/rust_e1000.ko                              0755 0 0
+file    /e1000_for_linux.ko    ../e1000-driver/src/e1000_for_linux.ko                   0755 0 0

@@ -82,9 +82,18 @@ impl<'a, K: KernelFunc> E1000Device<'a, K> {
 
         // Exercise3 Checkpoint 1
         // 分配tx_ring和rx_ring的内存空间并返回dma虚拟地址和物理地址
-        // let (tx_ring_vaddr, tx_ring_dma) = ?
-        // let (rx_ring_vaddr, rx_ring_dma) = ?
+        let (tx_ring_vaddr, tx_ring_dma) = kfn.dma_alloc_coherent(alloc_tx_ring_pages);
+        let (rx_ring_vaddr, rx_ring_dma) = kfn.dma_alloc_coherent(alloc_rx_ring_pages);
 
+        // TODO: Deallocate
+        // kfn.dma_free_coherent(tx_ring_vaddr, tx_ring_dma);
+        // kfn.dma_free_coherent(tx_ring_vaddr, tx_ring_dma);
+
+
+        // NOTE: Questions
+        // - What is a ring ?
+        //     Looks like a segment of mem that contains TxDesc, and it exists as a pointer to the beginning of the mem
+        // - What does it do ?
 
         let tx_ring = unsafe { from_raw_parts_mut(tx_ring_vaddr as *mut TxDesc, TX_RING_SIZE) };
         let rx_ring = unsafe { from_raw_parts_mut(rx_ring_vaddr as *mut RxDesc, RX_RING_SIZE) };
@@ -115,9 +124,8 @@ impl<'a, K: KernelFunc> E1000Device<'a, K> {
 
         // Exercise3 Checkpoint 2
         // 分配tx_buffer和rx_buffer的内存空间 并返回dma虚拟地址和物理地址
-        // let (mut tx_mbufs_vaddr, mut tx_mbufs_dma) = ?;
-        // let (mut rx_mbufs_vaddr, mut rx_mbufs_dma) = ?;
-
+        let (mut tx_mbufs_vaddr, mut tx_mbufs_dma) = kfn.dma_alloc_coherent(alloc_tx_ring_pages);
+        let (mut rx_mbufs_vaddr, mut rx_mbufs_dma) = kfn.dma_alloc_coherent(alloc_rx_ring_pages);
         
 
         if rx_mbufs_vaddr == 0 {
@@ -164,7 +172,7 @@ impl<'a, K: KernelFunc> E1000Device<'a, K> {
         */
         // 0x00000 ~ 0x1FFFF, I/O-Mapped Internal Registers and Memories
         let len = 0x1FFFF / size_of::<u32>();
-        // 处理网卡寄存器配置: 由一个指针和一个长度len形成一个slice切片。len是元素的个数，而非字节数。
+        // NOTE: 处理网卡寄存器配置: 由一个指针和一个长度len形成一个slice切片。len是元素的个数，而非字节数。
         let regs = unsafe { from_raw_parts_mut(mapped_regs as *mut Volatile<u32>, len) };
 
         let mut e1000dev = E1000Device {
@@ -207,11 +215,10 @@ impl<'a, K: KernelFunc> E1000Device<'a, K> {
 
         // Exercise3 Checkpoint 3
         // set tx descriptor base address and tx ring length
-        // self.regs[??].write(??);
-        // self.regs[??].write(??);
-
-
-
+        let tdlen = TX_RING_SIZE * core::mem::size_of::<TxDesc>();
+        self.regs[E1000_TDLEN].write(tdlen as u32);
+        self.regs[E1000_TDBAH].write((self.tx_ring_dma >> 32) as u32);
+        self.regs[E1000_TDBAL].write((self.tx_ring_dma & 0x00000000ffffffff) as u32); 
 
         self.regs[E1000_TDT].write(0);
         self.regs[E1000_TDH].write(0);
@@ -223,12 +230,14 @@ impl<'a, K: KernelFunc> E1000Device<'a, K> {
 
         // Exercise3 Checkpoint 4
         // set rx descriptor base address and rx ring length
-        // self.regs[??].write(??);
-        // self.regs[??].write(??);
+        let rdlen = RX_RING_SIZE * size_of::<RxDesc>();
+        self.regs[E1000_RDLEN].write(rdlen as u32);
+        self.regs[E1000_RDBAH].write((self.rx_ring_dma >> 32) as u32);
+        self.regs[E1000_RDBAL].write((self.rx_ring_dma & 0x00000000ffffffff) as u32); 
+
 
         self.regs[E1000_RDH].write(0);
         self.regs[E1000_RDT].write((RX_RING_SIZE - 1) as u32);
-        
 
 
         // filter by qemu's MAC address, 52:54:00:12:34:56

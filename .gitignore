@@ -1,2 +1,12 @@
 /target
 /Cargo.lock
+
+src/Makefile
+
+*.ko
+*.mod
+*.mod.c
+*.mod.o
+*.o
+*.symvers
+*.order
